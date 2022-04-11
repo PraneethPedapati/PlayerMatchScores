@@ -79,9 +79,35 @@ app.get("/players/:playerId/matches", async (request, response) => {
   let getMatchQuery = `
         SELECT match_details.match_id AS matchId, match_details.match AS match, match_details.year As year
         FROM player_match_score
-        INNER JOIN match_details ON player_match_details.player_id = match_details.player_id
-        WHERE match_details.player_id = ${playerId};
+        NATURAL JOIN match_details
+        WHERE player_id = ${playerId};
     `;
-  let matches = await db.get(getMatchQuery);
+  let matches = await db.all(getMatchQuery);
   response.send(matches);
+});
+
+app.get("/matches/:matchId/players", async (request, response) => {
+  let { matchId } = request.params;
+  let getMatchQuery = `
+        SELECT player_details.player_id AS playerId, player_details.player_name AS playerName
+        FROM player_match_score
+        INNER JOIN match_details ON player_match_score.match_id = match_details.match_id
+        INNER JOIN player_details ON player_details.player_id = player_match_score.player_id
+        WHERE match_details.match_id = ${matchId};
+    `;
+  let players = await db.all(getMatchQuery);
+  response.send(players);
+});
+
+app.get("/players/:playerId/playerScores", async (request, response) => {
+  let { playerId } = request.params;
+  let getPlayersQuery = `
+        SELECT player_id AS playerId, player_name AS playerName, SUM(player_match_score.score) AS totalScore, SUM(player_match_score.fours) AS totalFours, SUM(player_match_score.sixes) AS totalSixes
+        FROM player_details
+        NATURAL JOIN player_match_score
+        WHERE player_id = ${playerId};
+        GROUP BY player_id
+    `;
+  let players = await db.get(getPlayersQuery);
+  response.send(players);
 });
